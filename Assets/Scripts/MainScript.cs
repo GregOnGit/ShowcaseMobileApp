@@ -28,7 +28,7 @@ public class ServerConnect
             try
             {
                 // Just connecting to localhost for the moment for testing
-                s_client.Connect( "192.168.1.112", 8888 );
+                s_client.Connect( "gregoryonbusiness.ddns.net", 8888 );
             }
             catch (SocketException)
             {
@@ -45,12 +45,48 @@ public class ServerConnect
         }
 
         // Once connected send "I have connected"
-        String l_str = "Hi";
+        String l_strSend = "Hi";
         NetworkStream l_stream = s_client.GetStream();
-        byte[] l_bytesToSend = System.Text.Encoding.ASCII.GetBytes( l_str );
+        byte[] l_bytesToSend = System.Text.Encoding.ASCII.GetBytes( l_strSend );
         s_client.Client.Send( l_bytesToSend );
 
         Debug.Log( "Sent." );
+
+        // Listen and wait for commands
+        while( true )
+        {
+            // Checks if new data is available to be read from the network stream
+            if( s_client.Available > 0 )
+            {
+                // Create an array large enough to hold the recieved data
+                byte[] l_bytesRead = new byte[s_client.Available];
+
+                // Read the data from the network stream
+                s_client.GetStream().Read( l_bytesRead, 0, s_client.Available );
+
+                // Convert the byte array to a string we can understand
+                String l_str = System.Text.Encoding.ASCII.GetString( l_bytesRead );
+
+                // For now, just write whatever it is to console
+                Debug.Log( l_str );
+
+                // Act upon the commands
+                foreach( char l_cmd in l_str.ToCharArray() )
+                {
+                    // The play command
+                    if( l_cmd == 'p' )
+                    {
+                        MainScript.s_playSoundNow = true;
+                    }
+                    else
+                    {
+                        Debug.Log( "I did not understand that" );
+                    }
+                }
+            }
+
+            Thread.Sleep( 500 );
+        }
     }
 }
 
@@ -61,9 +97,22 @@ public class MainScript : MonoBehaviour
     // The thread that will take care of connection and sending packets
     Thread m_thread;
 
+    // The sound that will be played
+    [SerializeField]
+    public AudioClip m_audioClip;
+
+    // When to play the sound
+    public static bool s_playSoundNow = false;
+
+    // Audio source
+    [SerializeField]
+    public AudioSource m_audioSource;
+
     // Start is called before the first frame update
     void Start()
     {
+        m_audioSource.PlayOneShot( m_audioClip, 1.0f );
+
         ServerConnect.Init();
 
         // Start the connection process
@@ -74,6 +123,10 @@ public class MainScript : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        
+        if( s_playSoundNow )
+        {
+            m_audioSource.PlayOneShot( m_audioClip, 1.0f );
+            s_playSoundNow = false;
+        }
     }
 }
